@@ -1,3 +1,5 @@
 # never commit personal data
 volumes/
 .env
+config/
+!config/.gitkeep
