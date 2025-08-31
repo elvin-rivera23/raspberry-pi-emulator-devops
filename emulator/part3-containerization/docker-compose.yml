@@ -1,0 +1,84 @@
+services:
+  retroarch:
+    build:
+      context: .
+      args:
+        UID: ${HOST_UID:-1000}
+        GID: ${HOST_GID:-1000}
+    image: pi5-retroarch:dev
+    container_name: retroarch
+    environment:
+      - DISPLAY=${DISPLAY}
+      - PULSE_SERVER=unix:${PULSE_SOCKET}
+      - XDG_CONFIG_HOME=/home/app/config
+      - XDG_RUNTIME_DIR=/run/user/1000
+      - LIBGL_DRIVERS_PATH=/usr/lib/aarch64-linux-gnu/dri
+      - LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu:/lib/aarch64-linux-gnu
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/snd:/dev/snd
+      - /dev/input:/dev/input
+    group_add:
+      - "audio"
+      - "video"
+      - "input"
+      - "render"
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - ${PULSE_SOCKET}:${PULSE_SOCKET}
+      - /run/user/1000:/run/user/1000
+      - ./volumes/roms:/home/app/roms
+      - ./volumes/bios:/home/app/bios
+      - ./volumes/saves:/home/app/saves
+      - ./volumes/system:/home/app/system
+      - ./config:/home/app/config
+      - /usr/lib/aarch64-linux-gnu/dri:/usr/lib/aarch64-linux-gnu/dri:ro
+      - /usr/lib/aarch64-linux-gnu/libgbm.so.1:/usr/lib/aarch64-linux-gnu/libgbm.so.1:ro
+      - /lib/aarch64-linux-gnu/libdrm.so.2:/lib/aarch64-linux-gnu/libdrm.so.2:ro
+      - /usr/lib/aarch64-linux-gnu/libgallium-24.2.8-1~bpo12+rpt3.so:/usr/lib/aarch64-linux-gnu/libgallium-24.2.8-1~bpo12+rpt3.so:ro
+      - /usr/lib/aarch64-linux-gnu/libEGL_mesa.so.0:/usr/lib/aarch64-linux-gnu/libEGL_mesa.so.0:ro
+      - /usr/lib/aarch64-linux-gnu/libGLX_mesa.so.0:/usr/lib/aarch64-linux-gnu/libGLX_mesa.so.0:ro
+      - /usr/lib/aarch64-linux-gnu/libglapi.so.0:/usr/lib/aarch64-linux-gnu/libglapi.so.0:ro
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    command: ["retroarch", "--version"]
+  retroarch-gui:
+    image: pi5-retroarch:dev
+    container_name: retroarch-gui
+    environment:
+      - DISPLAY=${DISPLAY}
+      - PULSE_SERVER=unix:${PULSE_SOCKET}
+      - XDG_CONFIG_HOME=/home/app/config
+      - XDG_RUNTIME_DIR=/run/user/1000
+      - LIBGL_DRIVERS_PATH=/usr/lib/aarch64-linux-gnu/dri
+      - LD_LIBRARY_PATH=/usr/lib/aarch64-linux-gnu:/lib/aarch64-linux-gnu
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/snd:/dev/snd
+      - /dev/input:/dev/input
+    group_add:
+      - "audio"
+      - "video"
+      - "input"
+      - "render"
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:ro
+      - ${PULSE_SOCKET}:${PULSE_SOCKET}
+      - /run/user/1000:/run/user/1000
+      - ./volumes/roms:/home/app/roms
+      - ./volumes/bios:/home/app/bios
+      - ./volumes/saves:/home/app/saves
+      - ./volumes/system:/home/app/system
+      - ./config:/home/app/config
+      - /usr/lib/aarch64-linux-gnu/dri:/usr/lib/aarch64-linux-gnu/dri:ro
+      - /usr/lib/aarch64-linux-gnu/libgbm.so.1:/usr/lib/aarch64-linux-gnu/libgbm.so.1:ro
+      - /lib/aarch64-linux-gnu/libdrm.so.2:/lib/aarch64-linux-gnu/libdrm.so.2:ro
+      - /usr/lib/aarch64-linux-gnu/libgallium-24.2.8-1~bpo12+rpt3.so:/usr/lib/aarch64-linux-gnu/libgallium-24.2.8-1~bpo12+rpt3.so:ro
+      - /usr/lib/aarch64-linux-gnu/libEGL_mesa.so.0:/usr/lib/aarch64-linux-gnu/libEGL_mesa.so.0:ro
+      - /usr/lib/aarch64-linux-gnu/libGLX_mesa.so.0:/usr/lib/aarch64-linux-gnu/libGLX_mesa.so.0:ro
+      - /usr/lib/aarch64-linux-gnu/libglapi.so.0:/usr/lib/aarch64-linux-gnu/libglapi.so.0:ro
+    security_opt:
+      - no-new-privileges:true
+    command: ["retroarch"]
+
