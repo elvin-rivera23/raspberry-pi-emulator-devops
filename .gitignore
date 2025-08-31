@@ -1,0 +1,9 @@
+# general
+*.log
+.env
+.env.*
+
+# docker volumes (we use named volumes
+prom_data/
+grafana_data/
+prometheus/data/

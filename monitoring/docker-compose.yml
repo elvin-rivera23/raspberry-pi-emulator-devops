@@ -1,0 +1,58 @@
+services:
+  node-exporter:
+    image: prom/node-exporter:latest
+    command:
+      - --path.rootfs=/host
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - /:/host:ro,rslave
+    ports:
+      - "9100:9100"
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prom_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+
+  # ------------------------------
+  # grafana: dashboards + visualization
+  # ------------------------------
+  grafana:
+    image: grafana/grafana-oss:latest   # open-source Grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin   # default password (change later)
+    volumes:
+      - grafana_data:/var/lib/grafana      # persist dashboards/configs
+    ports:
+      - "3000:3000"                        # web UI
+
+
+  # ------------------------------
+  # cadvisor: per-container metrics for Prometheus
+  # ------------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest   # multi-arch image; works on Pi 5 (arm64)
+    restart: unless-stopped
+    privileged: true                          # needed to read container stats
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - "8080:8080"                           # optional: UI for quick checks
+
+
+
+volumes:
+  prom_data:
+  grafana_data:
