@@ -1,0 +1,9 @@
+services:
+  ai-detector:
+    build:
+      context: ../ai-detector
+    image: ai-detector:ci
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../captures:/data/captures:rw

@@ -1,0 +1,66 @@
+name: ai-detector smoke
+
+on:
+  push:
+    paths:
+      - "ai-detector/**"
+      - ".github/compose.ci.yml"
+      - ".github/workflows/ai-detector-smoke.yml"
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure deps (jq) + host volume
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          mkdir -p captures
+
+      - name: Show compose services (debug)
+        run: docker compose -f .github/compose.ci.yml config --services
+
+      - name: Build ai-detector
+        run: docker compose -f .github/compose.ci.yml build ai-detector
+
+      - name: Start ai-detector
+        run: docker compose -f .github/compose.ci.yml up -d ai-detector
+
+      - name: Wait for /healthz
+        run: |
+          for i in {1..30}; do
+            curl -sf http://localhost:8000/healthz && exit 0 || true
+            sleep 2
+          done
+          echo "ai-detector not healthy in time" >&2
+          docker compose -f .github/compose.ci.yml logs ai-detector || true
+          exit 1
+
+      - name: Create dummy screenshot inside container
+        run: |
+          docker compose -f .github/compose.ci.yml exec -T ai-detector python - <<'PY'
+          from PIL import Image, ImageDraw
+          p = "/data/captures/test_press_start.png"
+          img = Image.new("RGB",(640,360),"black")
+          d = ImageDraw.Draw(img)
+          d.text((120,150),"PRESS START",fill="white")
+          img.save(p)
+          print("wrote", p)
+          PY
+
+      - name: Verify OCR detects menu via /latest
+        run: |
+          resp="$(curl -s http://localhost:8000/latest)"
+          echo "$resp"
+          echo "$resp" | jq -e '.is_menu == true'
+
+      - name: Show repo tree (debug)
+        run: |
+          pwd
+          ls -la
+          ls -la ai-detector || true
+          ls -la .github || true
