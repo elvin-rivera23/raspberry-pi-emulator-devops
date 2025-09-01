@@ -57,3 +57,10 @@ jobs:
           resp="$(curl -s http://localhost:8000/latest)"
           echo "$resp"
           echo "$resp" | jq -e '.is_menu == true'
+
+      - name: Show repo tree (debug)
+        run: |
+          pwd
+          ls -la
+          ls -la ai-detector || true
+          ls -la .github || true
