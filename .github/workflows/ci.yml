@@ -1,23 +1,25 @@
-name: ci
+name: ci  # Shown in Actions UI
 
 on:
   push:
-    branches: [ main, part5-* ]
-  pull_request:
-  workflow_dispatch:
+    branches: [ main, part5-* ]     # Trigger on pushes to these branches
+  pull_request:                     # Also run on PRs
+  workflow_dispatch:                # Manual "Run workflow" button
 
 jobs:
+  # ---- Job 1: Dockerfile lint ----------------------------------------------
   hadolint:
     name: Dockerfile Lint (Hadolint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4            # pulls your repo code onto the runner
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: emulator/part3-containerization/Dockerfile
-          failure-threshold: error    # <-- treat warnings as pass
+          failure-threshold: error           # warnings won't fail
 
+  # ---- Job 2: Filesystem security scan -------------------------------------
   trivy-fs:
     name: Security Scan (Trivy - filesystem)
     runs-on: ubuntu-latest
@@ -26,8 +28,42 @@ jobs:
       - name: Scan repository with Trivy
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          scan-type: 'fs'
-          scan-ref: '.'
+          scan-type: 'fs'                    # scan files in the repo
+          scan-ref: '.'                      # repo root
           ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
+          severity: 'CRITICAL,HIGH'          # only fail on High/Critical
+          exit-code: '1'                     # nonzero exit on findings
+
+  # ---- Job 3: Build ARM64 image and smoke-test it ---------------------------
+  arm64-build-smoke:
+    name: ARM64 Buildx + Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      # Enable QEMU so x86 runner can emulate arm64
+      - name: Set up QEMU (arm64)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      # Enable Docker Buildx (buildkit)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build the arm64 image from your Part 3 Dockerfile.
+      # load: true -> makes the image available to `docker run` below.
+      - name: Build image (linux/arm64)
+        uses: docker/build-push-action@v5
+        with:
+          context: emulator/part3-containerization
+          file: emulator/part3-containerization/Dockerfile
+          platforms: linux/arm64
+          tags: local/retroarch:ci-arm64
+          push: false
+          load: true
+
+      # Quick smoke test inside the built image
+      - name: Smoke test (retroarch --version)
+        run: docker run --rm --platform linux/arm64 local/retroarch:ci-arm64 retroarch --version
