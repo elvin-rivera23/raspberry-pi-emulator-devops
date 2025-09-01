@@ -7,3 +7,6 @@
 prom_data/
 grafana_data/
 prometheus/data/
+data/roms/
+data/saves/
+data/config/

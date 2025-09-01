@@ -1,8 +1,17 @@
 FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# hadolint ignore=DL3008
+RUN set -eux; \
+  # enable main + contrib + non-free (+ non-free-firmware) on bookworm
+  echo 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware' > /etc/apt/sources.list; \
+  echo 'deb http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware' >> /etc/apt/sources.list; \
+  echo 'deb http://deb.debian.org/debian bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list; \
+  apt-get update && apt-get install -y --no-install-recommends \
     retroarch \
+    libretro-gambatte \
+    libretro-snes9x \
+    libretro-genesisplusgx \
     libgl1-mesa-dri \
     mesa-vulkan-drivers \
     libglu1-mesa \
@@ -17,7 +26,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 ARG UID=1000
 ARG GID=1000
-RUN groupadd -g ${GID} app && useradd -m -u ${UID} -g ${GID} app
+#RUN groupadd -g ${GID} app && useradd -m -u ${UID} -g ${GID} app
+# -l prevents lastlog/faillog writes which can bloat the image
+RUN groupadd -g ${GID} app && useradd -l -m -u ${UID} -g ${GID} app
 USER app
 WORKDIR /home/app
 

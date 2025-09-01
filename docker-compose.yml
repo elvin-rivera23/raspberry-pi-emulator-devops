@@ -1,0 +1,40 @@
+x-common: &common
+  image: ${IMAGE:-retroarch:local}
+  # runs as 'app' user from the Dockerfile
+  environment:
+    - TZ=Etc/UTC
+    - DISPLAY=:0
+    - XDG_CONFIG_HOME=/home/app/config
+    - PULSE_SERVER=unix:/run/user/1000/pulse/native
+    - XDG_RUNTIME_DIR=/run/user/1000
+  volumes:
+    - ./data/config:/home/app/config
+    - ./data/roms:/roms
+    - ./data/saves:/saves
+    - /tmp/.X11-unix:/tmp/.X11-unix           # X11 socket for video
+    - /run/user/1000/pulse:/run/user/1000/pulse # PulseAudio socket for sound
+    - /run/user/1000:/run/user/1000
+  healthcheck:
+    test: ["CMD-SHELL", "retroarch --version >/dev/null 2>&1 || exit 1"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 10s
+  restart: unless-stopped
+  command: ["bash","-lc","sleep infinity"]
+
+services:
+  retroarch-soft:
+    <<: *common
+    profiles: ["software"]
+
+  retroarch-gpu:
+    <<: *common
+    profiles: ["gpu"]
+    devices:
+      - /dev/dri:/dev/dri
+    group_add:
+      - "44"
+      - "105"
+    environment:
+      - LIBGL_ALWAYS_SOFTWARE=1
