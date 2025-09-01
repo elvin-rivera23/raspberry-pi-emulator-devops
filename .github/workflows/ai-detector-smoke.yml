@@ -27,10 +27,10 @@ jobs:
           docker compose version
 
       - name: Build ai-detector
-        run: docker compose build ai-detector
+        run: docker compose -f docker-compose.yml build ai-detector
 
       - name: Start ai-detector
-        run: docker compose up -d ai-detector
+        run: docker compose -f docker-compose.yml up -d ai-detector
 
       - name: Wait for /healthz
         run: |
@@ -39,12 +39,12 @@ jobs:
             sleep 2
           done
           echo "ai-detector not healthy in time" >&2
-          docker compose logs ai-detector || true
+          docker compose -f docker-compose.yml logs ai-detector || true
           exit 1
 
       - name: Create dummy screenshot inside container
         run: |
-          docker compose exec -T ai-detector python - <<'PY'
+          docker compose -f docker-compose.yml exec -T ai-detector python - <<'PY'
           from PIL import Image, ImageDraw
           p = "/data/captures/test_press_start.png"
           img = Image.new("RGB",(640,360),"black")
