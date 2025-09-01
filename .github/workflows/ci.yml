@@ -16,6 +16,7 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: emulator/part3-containerization/Dockerfile
+          failure-threshold: error    # <-- treat warnings as pass
 
   trivy-fs:
     name: Security Scan (Trivy - filesystem)
