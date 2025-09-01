@@ -1,0 +1,30 @@
+version: "3.9"
+
+x-common: &common
+  image: retroarch:local
+  # runs as 'app' user from the Dockerfile
+  volumes:
+    - ./data/config:/home/app/config
+    - ./data/roms:/roms
+    - ./data/saves:/saves
+  healthcheck:
+    test: ["CMD-SHELL", "retroarch --version >/dev/null 2>&1 || exit 1"]
+    interval: 30s
+    timeout: 5s
+    retries: 3
+    start_period: 10s
+  restart: unless-stopped
+  command: ["bash","-lc","sleep infinity"]
+
+services:
+  retroarch-soft:
+    <<: *common
+    profiles: ["software"]
+
+  retroarch-gpu:
+    <<: *common
+    profiles: ["gpu"]
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      - LIBGL_ALWAYS_SOFTWARE=0
