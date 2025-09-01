@@ -1,25 +1,29 @@
-name: ci  # Shown in Actions UI
+name: ci
 
 on:
   push:
-    branches: [ main, part5-* ]     # Trigger on pushes to these branches
-  pull_request:                     # Also run on PRs
-  workflow_dispatch:                # Manual "Run workflow" button
+    branches: [ main, part5-* ]     # run CI on branch pushes
+    tags: [ 'v*' ]                  # ALSO run when you push tags like v0.1.0
+  pull_request:
+  workflow_dispatch:
+
+# needed to push images to GHCR using GITHUB_TOKEN
+permissions:
+  contents: read
+  packages: write
 
 jobs:
-  # ---- Job 1: Dockerfile lint ----------------------------------------------
   hadolint:
     name: Dockerfile Lint (Hadolint)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4            # pulls your repo code onto the runner
+      - uses: actions/checkout@v4
       - name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: emulator/part3-containerization/Dockerfile
-          failure-threshold: error           # warnings won't fail
+          failure-threshold: error
 
-  # ---- Job 2: Filesystem security scan -------------------------------------
   trivy-fs:
     name: Security Scan (Trivy - filesystem)
     runs-on: ubuntu-latest
@@ -28,32 +32,24 @@ jobs:
       - name: Scan repository with Trivy
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          scan-type: 'fs'                    # scan files in the repo
-          scan-ref: '.'                      # repo root
+          scan-type: 'fs'
+          scan-ref: '.'
           ignore-unfixed: true
-          severity: 'CRITICAL,HIGH'          # only fail on High/Critical
-          exit-code: '1'                     # nonzero exit on findings
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
 
-  # ---- Job 3: Build ARM64 image and smoke-test it ---------------------------
   arm64-build-smoke:
     name: ARM64 Buildx + Smoke
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-
-      # Enable QEMU so x86 runner can emulate arm64
       - name: Set up QEMU (arm64)
         uses: docker/setup-qemu-action@v3
         with:
           platforms: arm64
-
-      # Enable Docker Buildx (buildkit)
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
-      # Build the arm64 image from your Part 3 Dockerfile.
-      # load: true -> makes the image available to `docker run` below.
       - name: Build image (linux/arm64)
         uses: docker/build-push-action@v5
         with:
@@ -63,7 +59,35 @@ jobs:
           tags: local/retroarch:ci-arm64
           push: false
           load: true
-
-      # Quick smoke test inside the built image
       - name: Smoke test (retroarch --version)
         run: docker run --rm --platform linux/arm64 local/retroarch:ci-arm64 retroarch --version
+
+  publish-ghcr:
+    name: Publish to GHCR (arm64) on tag
+    needs: [hadolint, trivy-fs, arm64-build-smoke]
+    if: startsWith(github.ref, 'refs/tags/')   # only runs on tag pushes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up QEMU (arm64)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & push (linux/arm64)
+        uses: docker/build-push-action@v5
+        with:
+          context: emulator/part3-containerization
+          file: emulator/part3-containerization/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/retroarch:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}/retroarch:latest
